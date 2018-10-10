@@ -1,0 +1,1064 @@
+#define __SRC_COMM
+#include "main.h"
+#undef __SRC_COMM
+
+//static unsigned short IpdLenCnt;
+//static unsigned char IpdLenBuf[4];
+
+void EnableUart0intr(void)
+{
+    NVIC_EnableIRQ(UART0_IRQn);
+    LPC_UART0->IER=IER_RBR|IER_THRE|IER_RLS;
+}
+void EnableUart2intr(void)
+{
+    NVIC_EnableIRQ(UART2_IRQn);
+    LPC_UART2->IER=IER_RBR|IER_THRE|IER_RLS;
+}
+void EnableUart3intr(void)
+{
+    NVIC_EnableIRQ(UART3_IRQn);
+    LPC_UART3->IER = IER_RBR | IER_THRE | IER_RLS;
+}
+
+void DisableUart0intr(void)
+{
+    NVIC_DisableIRQ(UART0_IRQn);
+    LPC_UART0->IER&=~(IER_RBR|IER_THRE|IER_RLS);
+}
+
+void DisableUart2intr(void)
+{
+    NVIC_DisableIRQ(UART2_IRQn);
+    LPC_UART2->IER&=~(IER_RBR|IER_THRE|IER_RLS);
+}
+void DisableUart3intr(void)
+{
+    NVIC_DisableIRQ(UART3_IRQn);
+    LPC_UART3->IER &= ~(IER_RBR | IER_THRE | IER_RLS);
+}
+
+void Uart0OvertimeError()
+{
+    //Set_Uart0_Baud_Rate(0);
+    Uart0.rcv_state = 0;
+    Uart0.rcv_finish_flag = 0;
+}
+void Uart2OvertimeError()
+{
+    // Set_Uart2_Baud_Rate(0);
+    Uart2.rcv_state = 0;
+    Uart2.rcv_finish_flag = 0;
+}
+void Uart3OvertimeError()
+{
+    //Set_Uart3_Baud_Rate(0);
+    Uart3.rcv_state = 0;
+    Uart3.rcv_finish_flag = 0;
+}
+
+void Uart0Init(void)
+{
+    LPC_PINCON->PINSEL0|=UART0SEL;
+    Set_Uart0_Baud_Rate(0x00);
+
+#if(UART0_FIFO_LENGTH==1)
+    LPC_UART0->FCR=0x07;
+#endif
+
+#if(UART0_FIFO_LENGTH==4)
+    LPC_UART0->FCR=0x47;
+#endif
+
+#if(UART0_FIFO_LENGTH==8)
+    LPC_UART0->FCR=0x87;
+#endif
+
+#if(UART0_FIFO_LENGTH==14)
+    LPC_UART0->FCR=0xC7;
+#endif
+
+//  LPC_UART0->FCR=0x07;
+#if(UART0IRQEnable)
+    EnableUart0intr();
+#endif
+
+}
+
+void Uart2Init(void)
+{
+
+    LPC_PINCON->PINSEL4 |= UART2SEL;
+    Set_Uart2_Baud_Rate(0x00);
+#if(UART2_FIFO_LENGTH==1)
+    LPC_UART2->FCR=0x07;
+#endif
+
+#if(UART2_FIFO_LENGTH==4)
+    LPC_UART2->FCR=0x47;
+#endif
+
+#if(UART2_FIFO_LENGTH==8)
+    LPC_UART2->FCR=0x87;
+#endif
+
+#if(UART2_FIFO_LENGTH==14)
+    LPC_UART2->FCR=0xC7;
+#endif
+#if(UART2IRQEnable)
+    EnableUart2intr();
+#endif
+
+}
+void Uart3Init(void)
+{
+
+    LPC_PINCON->PINSEL0 |= UART3SEL;
+    Set_Uart3_Baud_Rate(0x00);
+#if(UART3_FIFO_LENGTH==1)
+    LPC_UART3->FCR = 0x07;
+#endif
+
+#if(UART3_FIFO_LENGTH==4)
+    LPC_UART3->FCR = 0x47;
+#endif
+
+#if(UART3_FIFO_LENGTH==8)
+    LPC_UART3->FCR = 0x87;
+#endif
+
+#if(UART3_FIFO_LENGTH==14)
+    LPC_UART3->FCR = 0xC7;
+#endif
+#if(UART3IRQEnable)
+    EnableUart3intr();
+#endif
+
+}
+
+
+void Set_Uart0_Baud_Rate(uint32_t Baudrate)
+{
+    uint32_t Uart_bps,Fdiv;
+    switch(Baudrate)
+    {
+        case 0:
+            Uart_bps = 9600;
+            break;
+
+        case 1:
+            Uart_bps = 19200;
+            break;
+
+        case 2:
+            Uart_bps = 38400;
+            break;
+
+        case 3:
+            Uart_bps = 57600;
+            break;
+
+        case 4:
+            Uart_bps = 115200;
+            break;
+        default:
+            Uart_bps = 9600;
+            break;
+    }
+    LPC_UART0->LCR = 0x83;
+    Fdiv = (Fpclk/16) / Uart_bps;//(Fpclk/16) / Uart_bps;
+    LPC_UART0->DLM=Fdiv/256;
+    LPC_UART0->DLL=(Fdiv%256)+1;
+    LPC_UART0->LCR = 0x03;
+
+}
+void Set_Uart2_Baud_Rate(uint32 Baudrate)
+{
+    uint32 Uart_bps,Fdiv;
+    switch(Baudrate)
+    {
+        case 0:
+            Uart_bps = 9600;
+            break;
+
+        case 1:
+            Uart_bps = 19200;
+            break;
+
+        case 2:
+            Uart_bps = 38400;
+            break;
+
+        case 3:
+            Uart_bps = 57600;
+            break;
+
+        case 4:
+            Uart_bps = 115200;
+            break;
+
+        default:
+            Uart_bps = 9600;
+            break;
+    }
+    LPC_UART2->LCR = 0x83;
+    Fdiv =(Fpclk/16) / Uart_bps;
+    LPC_UART2->DLM=Fdiv/256;
+    LPC_UART2->DLL=(Fdiv%256)+1;
+    LPC_UART2->LCR = 0x03;
+
+
+}
+
+void Set_Uart3_Baud_Rate(uint32 Baudrate)
+{
+    uint32 Uart_bps, Fdiv;
+    switch(Baudrate)
+    {
+        case 0:
+            Uart_bps = 9600;
+            break;
+
+        case 1:
+            Uart_bps = 19200;
+            break;
+
+        case 2:
+            Uart_bps = 38400;
+            break;
+
+        case 3:
+            Uart_bps = 57600;
+            break;
+
+        case 4:
+            Uart_bps = 115200;
+            break;
+
+        default:
+            Uart_bps = 9600;
+            break;
+    }
+    LPC_UART3->LCR = 0x83;
+    Fdiv = (Fpclk / 16) / Uart_bps;
+    LPC_UART3->DLM = Fdiv / 256;
+    LPC_UART3->DLL = (Fdiv % 256) + 1;
+    LPC_UART3->LCR = 0x03;
+
+
+}
+
+
+
+void UART0_IRQHandler (void)
+{
+    uint8_t IIRValue;
+    uint8_t LSRValue;
+    uint8_t Dummy = Dummy;
+    uint8_t temp;
+    uint8_t i;
+
+    while(((IIRValue=LPC_UART0->IIR)&0x01)==0)
+    {
+        IIRValue >>= 1;         //调过IIR寄存器的第0位
+        IIRValue &= 0x07;           //通过IIR第0到3位查看串口状态
+
+        switch(IIRValue)
+        {
+            case  IIR_RLS ://如果是接收线状态
+            {
+                LSRValue = LPC_UART0->LSR;
+                if ( LSRValue & (LSR_OE|LSR_PE|LSR_FE|LSR_RXFE|LSR_BI) )    //溢出、奇偶等错误
+                {
+                    UART0Status = LSRValue;
+                    Dummy = LPC_UART0->RBR; //错误数据放入变量中
+                    return;
+                }
+                if ( LSRValue & LSR_RDR )   //数据可用
+                {
+                    for(i=0; i<UART0_FIFO_LENGTH; i++)
+                    {
+                        temp = LPC_UART0->RBR;
+                        //LPC_UART3->THR=temp;
+                        Uart0RcvHandle(&Uart0, temp);
+                    }
+                }
+            }
+            case IIR_CTI  : //超时状态
+            {
+                UART0Status |= 0x100;
+////            Uart0OvertimeError();
+                break;
+            }
+            case  IIR_RDA : //接收数据状态
+            {
+                //  while((LPC_UART0->LSR)&LSR_RDR)
+                {
+                    temp = LPC_UART0->RBR;
+                    //LPC_UART3->THR=temp;
+                    Uart0RcvHandle(&Uart0, temp);
+
+                }
+                break;
+            }
+
+            case IIR_THRE :     //发送保持寄存器中断
+            {
+                LSRValue = LPC_UART0->LSR;
+                if ( LSRValue & LSR_THRE )
+                {
+                    if(Uart0.send_len>0)
+                    {
+                        if(Uart0.send_len<UART_MAX_FIFO_LEN)
+                        {
+                            for(i=0; i<Uart0.send_len; i++)
+                            {
+                                LPC_UART0->THR=Uart0.send_buf[Uart0.send_index];
+                                Uart0.send_index++;
+                            }
+                            Uart0.send_len=0;
+                        }
+
+						else
+                        {
+                            for (i=0; i<UART_MAX_FIFO_LEN; i++)
+                            {
+                                LPC_UART0->THR = Uart0.send_buf[Uart0.send_index];
+                                Uart0.send_index++;
+                            }
+                            Uart0.send_len -=UART_MAX_FIFO_LEN;
+                        }
+                    }
+                    else
+                    {
+                        Uart0.be_sending_flag = 0;
+                    }
+                }
+                break;
+            }
+        }
+
+    }
+
+}
+
+void UART2_IRQHandler (void)
+{
+    uint8 IIRValue;
+    uint8 LSRValue;
+    uint8 Dummy = Dummy;
+    uint8 temp;
+    uint8 i;
+
+    while(((IIRValue=LPC_UART2->IIR)&0x01)==0)
+    {
+        IIRValue >>= 1;         //调过IIR寄存器的第0位
+        IIRValue &= 0x07;           //通过IIR第0到3位查看串口状态
+
+        switch(IIRValue)
+        {
+            case  IIR_RLS ://如果是接收线状态
+            {
+                LSRValue = LPC_UART2->LSR;
+                if ( LSRValue & (LSR_OE|LSR_PE|LSR_FE|LSR_RXFE|LSR_BI) )    //溢出、奇偶等错误
+                {
+                    UART2Status = LSRValue;
+                    Dummy = LPC_UART2->RBR; //错误数据放入变量中
+                    return;
+                }
+                if ( LSRValue & LSR_RDR )   //数据可用
+                {
+                    //  for(i=0;i<UART2_FIFO_LENGTH;i++)
+                    {
+                        temp = LPC_UART2->RBR;
+//						#ifdef __COMPLETE_DEBUG
+//                        LPC_UART0->THR = temp;        //GPRS调试用
+//                        #endif
+                        GsmUartRcvHandle(temp);
+                    }
+                }
+            }
+            case IIR_CTI  : //超时状态
+            {
+                UART2Status |= 0x100;
+                //Uart0OvertimeError();
+                break;
+            }
+            case  IIR_RDA : //接收数据达到FIFO触发点
+            {
+                //  while((LPC_UART2->LSR)&LSR_RDR)
+                {
+                    temp = LPC_UART2->RBR;
+//				#ifdef __COMPLETE_DEBUG
+//                    LPC_UART0->THR = temp;            //GPRS调试用
+//                #endif
+                    GsmUartRcvHandle(temp);
+
+                }
+                break;
+            }
+
+            case IIR_THRE :     //发送保持寄存器中断
+            {
+
+                LSRValue = LPC_UART2->LSR;
+                if ( LSRValue & LSR_THRE )
+                {
+                    if(Uart2.send_len>0)
+                    {
+                        if(Uart2.send_len<UART_MAX_FIFO_LEN)
+                        {
+                            for(i=0; i<Uart2.send_len; i++)
+                            {
+                                LPC_UART2->THR=Uart2.send_buf[Uart2.send_index];
+                                Uart2.send_index++;
+                            }
+                            Uart2.send_len=0;
+                        }
+                        else
+                        {
+                            for (i=0; i<UART_MAX_FIFO_LEN; i++)
+                            {
+                                LPC_UART2->THR = Uart2.send_buf[Uart2.send_index];
+                                Uart2.send_index++;
+                            }
+                            Uart2.send_len -=UART_MAX_FIFO_LEN;
+                        }
+                    }
+                    else
+                    {
+                        Uart2.be_sending_flag = 0;
+                    }
+
+                }
+                break;
+            }
+        }
+
+    }
+
+}
+void UART3_IRQHandler (void)
+{
+    uint8_t IIRValue;
+    uint8_t LSRValue;
+    uint8_t Dummy = Dummy;
+    uint8_t temp;
+    uint8_t i;
+
+    while(((IIRValue = LPC_UART3->IIR) & 0x01) == 0)
+    {
+        IIRValue >>= 1;         //调过IIR寄存器的第0位
+        IIRValue &= 0x07;           //通过IIR第0到3位查看串口状态
+
+        switch(IIRValue)
+        {
+            case  IIR_RLS :   //如果是接收线状态
+            {
+                LSRValue = LPC_UART3->LSR;
+                if ( LSRValue & (LSR_OE | LSR_PE | LSR_FE | LSR_RXFE | LSR_BI) )   //溢出、奇偶等错误
+                {
+                    UART3Status = LSRValue;
+                    Dummy = LPC_UART3->RBR; //错误数据放入变量中
+                    return;
+                }
+                if ( LSRValue & LSR_RDR )   //数据可用
+                {
+                    //for(i=0;i<UART3_FIFO_LENGTH;i++)
+                    {
+                        temp = LPC_UART3->RBR;
+                       // LPC_UART0->THR = temp;
+                        BleUartRcvHandle(&Uart3, temp);
+                    }
+                }
+            }
+            case IIR_CTI  :   //超时状态
+            {
+                UART3Status |= 0x100;
+////            Uart0OvertimeError();
+                break;
+            }
+            case  IIR_RDA :   //接收数据状态ZZ
+            {
+                //  while((LPC_UART0->LSR)&LSR_RDR)
+                {
+                    temp = LPC_UART3->RBR;
+                  //  LPC_UART0->THR = temp;
+                    BleUartRcvHandle(&Uart3, temp);
+                }
+                break;
+            }
+
+            case IIR_THRE :     //发送保持寄存器中断
+            {
+                LSRValue = LPC_UART3->LSR;
+                if ( LSRValue & LSR_THRE )
+                {
+                    if(Uart3.send_len > 0)
+                    {
+                        if(Uart3.send_len < UART3_FIFO_LENGTH)
+                        {
+                            for(i = 0; i < Uart3.send_len; i++)
+                            {
+                                LPC_UART3->THR = Uart3.send_buf[Uart3.send_index];
+                                Uart3.send_index++;
+                            }
+                            Uart3.send_len = 0;
+                        }
+
+                        else
+                        {
+                            for (i = 0; i < UART3_FIFO_LENGTH; i++)
+                            {
+                                LPC_UART3->THR = Uart3.send_buf[Uart3.send_index];
+                                Uart3.send_index++;
+                            }
+                            Uart3.send_len -= UART3_FIFO_LENGTH;
+                        }
+                    }
+                    else
+                    {
+                        Uart3.be_sending_flag = 0;
+                    }
+                }
+                break;
+            }
+        }
+
+    }
+
+}
+
+void Uart0_Send(uint16_t Length)
+{
+    uint16_t i;
+
+    Uart0.send_len = Length;
+    Uart0.send_index = 0;
+	
+
+    if (Uart0.send_len < UART_MAX_FIFO_LEN)
+    {
+        for (i=0; i<Uart0.send_len; i++)
+        {
+            LPC_UART0->THR = Uart0.send_buf[i];
+        }
+        Uart0.send_len = 0;
+    }
+    else
+    {
+        for (i=0; i<UART_MAX_FIFO_LEN; i++)
+        {
+            LPC_UART0->THR = Uart0.send_buf[i];
+            Uart0.send_index++;
+        }
+        Uart0.send_len -= UART_MAX_FIFO_LEN;      
+        Uart0.overtime_cnt = 0;
+    }
+	Uart0.be_sending_flag = 1;
+}
+
+void Uart0_Query_Send(uint16 Length)
+{
+    uint16 i;
+    uint16 length = Length;
+    uint16 index = 0;
+
+    DisableIrq();
+
+    while(length>0)
+    {
+        if (length < UART_MAX_FIFO_LEN)
+        {
+            for (i=0; i<length; i++)
+            {
+                LPC_UART0->THR = Uart0.send_buf[index++];
+            }
+            length = 0;
+            while((LPC_UART0->LSR& 0x40) ==0);
+        }
+        else
+        {
+            for (i=0; i<UART_MAX_FIFO_LEN; i++)
+            {
+                LPC_UART0->THR = Uart0.send_buf[index++];
+                length--;
+            }
+            while((LPC_UART0->LSR & 0x40) ==0);
+        }
+    }
+
+    EnableIrq();
+}
+
+void DebugMessage(char *str)
+{
+    int i;
+	if(DebugEn == 0)		//收到串口命令，不要发调试信息
+		return;
+    for(i = 0; i < 100; i++)
+    {
+        if(*str)
+            Uart0.send_buf[i] = *str;
+        else
+            break;
+        str++;
+    }
+    Uart0_Query_Send(i);
+//   Uart0_Send(i);
+
+}
+
+void Uart2_Send(uint16 Length)
+{
+    uint16 i;
+
+    Uart2.send_len = Length;
+    Uart2.send_index = 0;
+
+    if (Uart2.send_len < UART_MAX_FIFO_LEN)
+    {
+        for (i=0; i<Uart2.send_len; i++)
+        {
+            LPC_UART2->THR = Uart2.send_buf[i];
+        }
+        Uart2.send_len = 0;
+        Uart2.be_sending_flag = 0;
+
+    }
+    else
+    {
+        for (i=0; i<UART_MAX_FIFO_LEN; i++)
+        {
+            LPC_UART2->THR = Uart2.send_buf[i];
+
+            Uart2.send_index++;
+        }
+        Uart2.send_len-=UART_MAX_FIFO_LEN;
+        Uart2.be_sending_flag = 1;
+        Uart2.overtime_cnt = 0;
+    }
+}
+void Uart2_Query_Send(uint16 Length)
+{
+    uint8 i;
+    uint16 length = Length;
+    uint16 index = 0;
+    DisableIrq();
+
+//  Delay_10us(10);
+    while(length>0)
+    {
+        if (length < UART_MAX_FIFO_LEN)
+        {
+            for (i=0; i<length; i++)
+            {
+                LPC_UART2->THR = Uart2.send_buf[index++];
+            }
+            length = 0;
+            while((LPC_UART2->LSR& 0x40) ==0);
+        }
+        else
+        {
+            for (i=0; i<UART_MAX_FIFO_LEN; i++)
+            {
+                LPC_UART2->THR = Uart2.send_buf[index++];
+                length--;
+            }
+            while((LPC_UART2->LSR & 0x40) ==0);
+        }
+    }
+
+    EnableIrq();
+}
+
+void Uart3_SendStr(char *str)
+{
+    int i;
+
+    for(i = 0; i < 100; i++)
+    {
+        if(*str)
+            Uart3.send_buf[i] = *str;
+        else
+            break;
+        str++;
+    }
+    Uart3_Query_Send(i);
+}
+
+void Uart3_Send(uint16 Length)
+{
+    uint8 i;
+
+    Uart3.send_len = Length;
+    Uart3.send_index = 0;
+
+    if (Uart3.send_len < UART_MAX_FIFO_LEN)
+    {
+        for (i = 0; i < Uart3.send_len; i++)
+        {
+            LPC_UART3->THR = Uart3.send_buf[i];
+        }
+        Uart3.send_len = 0;
+        Uart3.be_sending_flag = 0;
+
+    }
+    else
+    {
+        for (i = 0; i < UART_MAX_FIFO_LEN; i++)
+        {
+            LPC_UART3->THR = Uart3.send_buf[i];
+            Uart3.send_len--;
+            Uart3.send_index++;
+        }
+        Uart3.be_sending_flag = 1;
+        Uart3.overtime_cnt = 0;
+    }
+
+}
+void Uart3_Query_Send(uint16 Length)
+{
+    uint8 i;
+    uint8 length = Length;
+    uint8 index = 0;
+    DisableIrq();
+
+    Delay_10us(10);
+    while(length > 0)
+    {
+        if (length < UART_MAX_FIFO_LEN)
+        {
+            for (i = 0; i < length; i++)
+            {
+                LPC_UART3->THR = Uart3.send_buf[index++];
+            }
+            length = 0;
+            while((LPC_UART3->LSR & 0x40) == 0);
+        }
+        else
+        {
+            for (i = 0; i < UART_MAX_FIFO_LEN; i++)
+            {
+                LPC_UART3->THR = Uart3.send_buf[index++];
+                length--;
+            }
+            while((LPC_UART3->LSR & 0x40) == 0);
+        }
+    }
+
+    EnableIrq();
+}
+
+/*************************************************************************
+    以下为和设备协议相关部分
+**************************************************************************/
+void GprsFlushRx(void)
+{
+    Uart2.rcv_finish_flag = 0;
+    Uart2.rcv_len = 0;
+    Uart2.rcv_state = 0;
+    Uart2.rcv_index = 0;
+}
+
+/*
+void GsmUartRcvHandle(STRU_UART_PARAM *uart,unsigned char dat)
+{
+    static unsigned short len;
+    unsigned char temp;
+
+    if(GprsRcvListenEn)
+    {
+        switch(uart->rcv_state)
+        {
+            case 0:
+                if(dat == '+')
+                {
+                    uart->rcv_state = 1;
+                }
+                break;
+            case 1:
+                if(dat == 'I')
+                {
+                    uart->rcv_state = 2;
+                }
+                else
+                {
+                    uart->rcv_state = 0;
+                }
+                break;
+            case 2:
+                if(dat == 'P')
+                {
+                    uart->rcv_state = 3;
+                }
+                else
+                {
+                    uart->rcv_state = 0;
+                }
+                break;
+            case 3:
+                if(dat == 'D')
+                {
+                    uart->rcv_state = 4;
+                    IpdLenCnt = 0;
+                }
+                else
+                {
+                    uart->rcv_state = 0;
+                }
+                break;
+            case 4:
+                if(dat == ',')
+                {
+                    uart->rcv_state = 5;
+                    IpdLenCnt = 0;
+                }
+                else
+                {
+                    uart->rcv_state = 0;
+                }
+                break;
+            case 5:
+                temp = dat;
+                IpdLenBuf[IpdLenCnt] = temp;
+                IpdLenCnt ++;
+                if(temp == ':')             //数据接收长度部分接收完毕
+                {
+                    len = DecCH2Num(IpdLenBuf,IpdLenCnt-1);
+                    GprsTcpRcvLen = 0;
+                    uart->rcv_index = 0;
+                    uart->rcv_state = 6;
+                    GprsIpFrameLen = len;
+                }
+                if(IpdLenCnt > 5)//长度最大4位数
+                    uart->rcv_state = 0;
+                break;
+
+            case 6:                     //接收并存储数据
+                GprsTcpRcvBuf[GprsTcpRcvLen] = dat;
+                GprsTcpRcvLen++;
+                if(GprsTcpRcvLen >= GprsIpFrameLen)
+                {
+                    GprsTcpRcvStatus = 1;
+                    GprsUartLockFlag = 0;
+                    uart->rcv_state =0;
+                    GprsRcvMatchResult = AT_RCV_OK;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    else            //AT指令或其它控制命令返回
+    {
+        switch(uart->rcv_state)
+        {
+            case 0x00:                  //SOF
+                uart->rcv_index = 0;
+                uart->rcv_len = 0;
+                if (dat ==0x0D)
+                {
+                    uart->rcv_state = 0x01;
+                    uart->rcv_len = 0;
+                    uart->rcv_index = 0;
+                }
+                break;
+
+            case 0x01:                                                   //ADDR
+                if(dat == 0x0A)
+                {
+                    uart->rcv_state = 0x02;
+                }
+                else
+                {
+                    uart->rcv_state = 0;
+                }
+                break;
+            case 0x02:                                                   //DATA
+                uart->rcv_buf[uart->rcv_index] = dat;
+                uart->rcv_index++;
+                uart->rcv_len++;
+                if(uart->rcv_len >= 1024)       //保护内存不越界
+                    uart->rcv_state = 0;
+                if(uart->rcv_len>= GprsRcvMatchLen)
+                {
+                    if(StrSearch(uart->rcv_buf,GprsRcvMatchBuf,uart->rcv_len,GprsRcvMatchLen) == 0)
+                    {
+                        GprsRcvMatchResult = AT_RCV_OK;//AT_RCV_OK;
+                        GprsUartLockFlag = 0;
+                    //  uart->rcv_state = 0x00;
+                    }
+                    else if(uart->rcv_len>= 6)
+                    {
+                        if(StrSearch(uart->rcv_buf,"ERROR",uart->rcv_len,5) == 0)
+                        {
+                            GprsRcvMatchResult = AT_RCV_ERROR;//AT_RCV_ERROR;
+                            GprsUartLockFlag = 0;
+
+                        }
+                    }
+                }
+                break;
+            default:
+                uart->rcv_state = 0x00;
+    //          uart->RecvFlag =0;
+                break;
+        }
+    }
+}
+*/
+
+void GsmUartRcvHandle(unsigned char dat)
+{
+//    static unsigned short len;
+//    unsigned char temp;
+    //DATA
+    Uart2.rcv_buf[Uart2.rcv_index] = dat;
+    Uart2.rcv_index++;
+    Uart2.rcv_len++;
+    if(Uart2.rcv_len >= UART_BUF_LENGTH)        //保护内存不越界
+    {
+        Uart2.rcv_index = 0;
+        Uart2.rcv_len = 0;
+    }
+
+}
+void BleUartRcvHandle(STRU_UART_PARAM *uart, unsigned char dat)
+{
+	unsigned short crc;
+	
+    if(BleRcvListenEn)//数据接收
+    {
+        switch(uart->rcv_state)
+        {
+            case 0:
+                StartUart3Timeout();
+                uart->rcv_index=0;
+                uart->rcv_len=0;
+                if(dat== PACKET_SOF)//帧头
+                {
+                    uart->rcv_state=1;
+                    uart->rcv_buf[uart->rcv_index]=dat;
+                    uart->rcv_index++;
+                    uart->rcv_len++;
+                }
+                break;
+            case 1:
+                if((dat==0xFF)||(dat==BtRandomAddr))//通用地址或随机地址可以通过
+                {
+					uart->rcv_state=2;
+					uart->rcv_buf[uart->rcv_index]=dat;
+					uart->rcv_index++;
+					uart->rcv_len++;
+					if(dat == 0xFF)
+					{
+						BtAddrMatchFlag = 0;
+					}
+					else
+					{
+						BtAddrMatchFlag = 1;
+					}
+				}
+				else
+				{
+					uart->rcv_state = 0;					
+				}
+                break;
+            case 2:
+                uart->rcv_state=3;
+                uart->rcv_buf[uart->rcv_index]=dat;
+                uart->rcv_index++;
+                uart->rcv_len++;
+                break;
+            case 3:
+                if(uart->rcv_len<uart->rcv_buf[2]+2)
+                {
+                    uart->rcv_buf[uart->rcv_index]=dat;
+                    uart->rcv_index++;
+                    uart->rcv_len++;
+                }
+                else
+                {
+                    uart->rcv_buf[uart->rcv_index]=dat;
+					crc = CRC16(uart->rcv_buf,uart->rcv_len);
+                    dat= crc&0x00FF;//CheckSum(uart->rcv_buf,uart->rcv_len);
+                    if(dat==uart->rcv_buf[uart->rcv_len])
+                    {
+                        uart->rcv_finish_flag=1;
+                    }
+                    uart->rcv_state=0;
+                }
+                break;
+            default:
+                uart->rcv_state=0;
+                break;
+        }
+    }
+    else//其他内容接收
+    {
+        uart->rcv_buf[uart->rcv_index]=dat;
+        uart->rcv_index++;
+        uart->rcv_len++;
+    }
+}
+void Uart0RcvHandle(STRU_UART_PARAM *uart, unsigned char dat)
+{
+
+    {
+        switch(uart->rcv_state)
+        {
+            case 0:
+                StartUart0Timeout();
+                uart->rcv_index=0;
+                uart->rcv_len=0;
+                if(dat== PACKET_SOF)//帧头
+                {
+                    uart->rcv_state=1;
+                    uart->rcv_buf[uart->rcv_index]=dat;
+                    uart->rcv_index++;
+                    uart->rcv_len++;
+                }
+                break;
+            case 1:
+                if((dat==0xff)||(dat==ParameterList.LocalAddr))//地址
+                {
+                    uart->rcv_state=2;
+                    uart->rcv_buf[uart->rcv_index]=dat;
+                    uart->rcv_index++;
+                    uart->rcv_len++;
+                }
+                break;
+            case 2:
+                uart->rcv_state=3;
+                uart->rcv_buf[uart->rcv_index]=dat;
+                uart->rcv_index++;
+                uart->rcv_len++;
+                break;
+            case 3:
+                if(uart->rcv_len<uart->rcv_buf[2]+2)
+                {
+                    uart->rcv_buf[uart->rcv_index]=dat;
+                    uart->rcv_index++;
+                    uart->rcv_len++;
+                }
+                else
+                {
+                    uart->rcv_buf[uart->rcv_index]=dat;
+                    dat=CheckSum(uart->rcv_buf,uart->rcv_len);
+                    if(dat==uart->rcv_buf[uart->rcv_len])
+                    {
+                        uart->rcv_finish_flag=1;
+                    }
+                    uart->rcv_state=0;
+                }
+                break;
+            default:
+                uart->rcv_state=0;
+                break;
+        }
+    }
+
+}
+
+

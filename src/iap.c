@@ -1,0 +1,169 @@
+
+#include "lpc17xx.h"
+#include "core_cm3.h"
+#include "type.h"
+#include "iap.h"
+
+uint32  paramin[8];
+uint32  paramout[8];
+IAP IAP_Entry = (IAP)IAP_ENTER_ADR;
+
+uint32  SelSector(uint8 sec1, uint8 sec2)
+{
+    __disable_irq();
+    paramin[0] = IAP_SELECTOR;
+    paramin[1] = sec1;
+    paramin[2] = sec2;
+    (*IAP_Entry)(paramin, paramout);
+    __enable_irq();
+    return(paramout[0]);
+}
+
+uint32  RamToFlash(uint32 dst, uint32 src, uint32 no)
+{
+    __disable_irq();
+    paramin[0] = IAP_RAMTOFLASH;
+    paramin[1] = dst;
+    paramin[2] = src;
+    paramin[3] = no;
+    paramin[4] = IAP_FCCLK;
+    (*IAP_Entry)(paramin, paramout);
+    __enable_irq();
+    return(paramout[0]);
+}
+
+uint32  EraseSector(uint8 sec1, uint8 sec2)
+{
+    __disable_irq();
+    paramin[0] = IAP_ERASESECTOR;
+    paramin[1] = sec1;
+    paramin[2] = sec2;
+    paramin[3] = IAP_FCCLK;
+    (*IAP_Entry)(paramin, paramout);
+    __enable_irq();
+    return(paramout[0]);
+}
+
+uint32  BlankCHK(uint8 sec1, uint8 sec2)
+{
+    paramin[0] = IAP_BLANKCHK;
+    paramin[1] = sec1;
+    paramin[2] = sec2;
+    (*IAP_Entry)(paramin, paramout);
+
+    return(paramout[0]);
+}
+
+uint32  ReadParID(void)
+{
+    paramin[0] = IAP_READPARTID;
+    (*IAP_Entry)(paramin, paramout);
+
+    return(paramout[0]);
+}
+
+uint32  BootCodeID(void)
+{
+    paramin[0] = IAP_BOOTCODEID;
+    (*IAP_Entry)(paramin, paramout);
+
+    return(paramout[0]);
+}
+
+uint32  Compare(uint32 dst, uint32 src, uint32 no)
+{
+    paramin[0] = IAP_COMPARE;
+    paramin[1] = dst;
+    paramin[2] = src;
+    paramin[3] = no;
+    (*IAP_Entry)(paramin, paramout);
+
+    return(paramout[0]);
+}
+
+
+
+unsigned char UpdateUserFlag(void)
+{
+    __align(4) unsigned char write_buf[256];
+    unsigned int i;
+
+    for(i = 0; i < 256; i++)
+        write_buf[i] = 0xFF;
+    write_buf[0] = 0x55;
+    write_buf[1]    = 0xAA;
+
+    if(SelSector(USER_CODE_FLAG_SECTOR, USER_CODE_FLAG_SECTOR) != CMD_SUCCESS )
+    {
+        return FALSE;
+    }
+    if(EraseSector(USER_CODE_FLAG_SECTOR,USER_CODE_FLAG_SECTOR) != CMD_SUCCESS )
+    {
+        return FALSE;
+    }
+    if(SelSector(USER_CODE_FLAG_SECTOR,USER_CODE_FLAG_SECTOR) != CMD_SUCCESS )
+    {
+        return FALSE;
+    }
+    if(RamToFlash(USER_CODE_FLAG_ADDR,(unsigned int)write_buf, 256) != CMD_SUCCESS)
+    {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+unsigned char EraseUserFlag(void)
+{
+
+    if(SelSector(USER_CODE_FLAG_SECTOR, USER_CODE_FLAG_SECTOR) != CMD_SUCCESS )
+    {
+        return FALSE;
+    }
+    if(EraseSector(USER_CODE_FLAG_SECTOR,USER_CODE_FLAG_SECTOR) != CMD_SUCCESS )
+    {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+
+void CopyVectorTableToRAM(void)
+{
+    uint32 size;
+
+    const uint8 *pUserCodeAddr = (uint8 *)MAIN_START_ADDR;
+
+    uint8 *pRamAddr = (uint8 *)RAM_START;
+
+    for(size = 0; size < 0x400; size++)
+        *pRamAddr++ = *pUserCodeAddr++;
+
+}
+
+
+void VectorRemapToRAM(void)
+{
+    SCB->VTOR = RAM_START;
+}
+
+
+void ExecuteUserCode(void)
+{
+    void (* user_code_entry)(void) = (void(*)(void))(MAIN_START_ADDR+0xCD);
+    user_code_entry();
+}
+
+
+void MCUResetToBoot(void)
+{
+    void (* pRst)(void) = (void(*)(void))0xCD;
+    SCB->VTOR = 0;
+    pRst();
+}
+
+unsigned char IsUserCodeValid(void)
+{
+    if(( *((const uint8 *)USER_CODE_FLAG_ADDR ) == 0x55) &&(*((const uint8 *)(USER_CODE_FLAG_ADDR+1)) == 0xAA))
+        return TRUE;
+    return FALSE;
+}
